@@ -1,5 +1,6 @@
-# https://www.metrolab.com/products/thm1176/
-# https://github.com/python-ivi/python-usbtmc#configuring-udev
+see
+https://www.metrolab.com/products/thm1176/
+https://github.com/python-ivi/python-usbtmc#configuring-udev
 
 ```bash
 pip2 install pyusb --user
