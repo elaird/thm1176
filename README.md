@@ -8,5 +8,7 @@ https://github.com/python-ivi/python-usbtmc#configuring-udev
 # install dependencies:
 pip2 install pyusb --user
 pip2 install python-usbtmc --user
+
+# acquire from probe:
 ./mag_usbtmc.py
 ```
