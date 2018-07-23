@@ -34,6 +34,7 @@ def histos(directory="2018-07-18"):
         h_BxB = r.TH1D(filename + "BxB", "%s; B_{x} / |B|;entries / bin" % title, 200, -1.0, 1.0)
         h_ByB = r.TH1D(filename + "ByB", "%s; B_{y} / |B|;entries / bin" % title, 200, -1.0, 1.0)
         h_BzB = r.TH1D(filename + "BzB", "%s; B_{z} / |B|;entries / bin" % title, 200, -1.0, 1.0)
+        h_phi = r.TH1D(filename + "phi", "%s; atan2(B_{y} , B_{x});entries / bin" % title, 200, -r.TMath.Pi(), r.TMath.Pi())
 
         g_B = r.TGraph()
         iPoint = 0
@@ -75,6 +76,7 @@ def histos(directory="2018-07-18"):
             h_BxB.Fill(b_x / b_mag)
             h_ByB.Fill(b_y / b_mag)
             h_BzB.Fill(b_z / b_mag)
+            h_phi.Fill(r.TMath.ATan2(b_y, b_x))
             g_B.SetPoint(iPoint, 1 + iPoint, b_mag)
             if not iPoint:
                 t0 = truncated_date(fields[:2])
@@ -84,12 +86,7 @@ def histos(directory="2018-07-18"):
         f.close()
 
         g_B.SetName("_".join([t0, tn]))
-        out.append(g_B)
-        out.append(h_B)
-        out.append(None)
-        out.append(h_BxB)
-        out.append(h_ByB)
-        out.append(h_BzB)
+        out.append((g_B, h_B, h_phi, h_BxB, h_ByB, h_BzB))
 
     return out
 
@@ -105,50 +102,55 @@ def write(lst, pdf, period=6):
 
     keep = []
     can.Print(pdf + "[")
-    for i, h in enumerate(lst):
-        if not (i % period):
-            can.cd(0)
-            can.Clear()
-            can.Divide(3, 2)
+    for g_B, h_B, h_phi, h_BxB, h_ByB, h_BzB in lst:
+        can.cd(0)
+        can.Clear()
+        can.Divide(3, 2)
 
-        can.cd(1 + i % period)
-        r.gPad.SetTickx()
-        r.gPad.SetTicky()
+        for i in range(period):
+            can.cd(1 + i)
+            r.gPad.SetTickx()
+            r.gPad.SetTicky()
 
-        if h is None and 2 <= i:
-            text = r.TLatex()
-            text.SetTextAlign(32)
-            text.SetTextFont(102)
-            text.SetTextSize(1.4 * text.GetTextSize())
-            text.SetNDC()
+            if i == 0:
+                g_B.SetMarkerStyle(20)
+                g_B.Draw("ap")
+                g_B.GetXaxis().SetTitle("sequential sample number (\Deltat = 2 seconds)")
+                g_B.GetYaxis().SetTitle(h_B.GetXaxis().GetTitle())
+                g_B.GetXaxis().SetTitleSize(1.3 * g_B.GetXaxis().GetTitleSize())
+                g_B.GetYaxis().SetTitleSize(1.3 * g_B.GetYaxis().GetTitleSize())
+                g_B.GetYaxis().SetTitleOffset(-11.65)
+                g_B.SetTitle(h_B.GetTitle())
+            elif i == 2:
+                text = r.TLatex()
+                text.SetTextAlign(32)
+                text.SetTextFont(102)
+                text.SetTextSize(1.4 * text.GetTextSize())
+                text.SetNDC()
 
-            times = lst[i-2].GetName().split("_")
-            keep.append(text.DrawText(0.95, 0.95, lst[i - 1].GetTitle()))
-            keep.append(text.DrawText(0.95, 0.85, "from " + times[0]))
-            keep.append(text.DrawText(0.95, 0.75, "to " + times[1]))
-            keep.append(text.DrawText(0.95, 0.55, "|B| = %6.4f +- %6.4f T" % (lst[i - 1].GetMean(), lst[i - 1].GetRMS())))
-            keep.append(text.DrawText(0.95, 0.35, "Bx / |B| = %6.3f +- %5.3f" % (lst[i + 1].GetMean(), lst[i + 1].GetRMS())))
-            keep.append(text.DrawText(0.95, 0.25, "By / |B| = %6.3f +- %5.3f" % (lst[i + 2].GetMean(), lst[i + 2].GetRMS())))
-            keep.append(text.DrawText(0.95, 0.15, "Bz / |B| = %6.3f +- %5.3f" % (lst[i + 3].GetMean(), lst[i + 3].GetRMS())))
+                times = g_B.GetName().split("_")
+                keep.append(text.DrawText(0.95, 0.95, h_B.GetTitle()))
+                keep.append(text.DrawText(0.95, 0.85, "from " + times[0]))
+                keep.append(text.DrawText(0.95, 0.75, "to " + times[1]))
+                keep.append(text.DrawText(0.95, 0.55, "|B| = %6.4f +- %6.4f T"    % (h_B.GetMean(), h_B.GetRMS())))
+                keep.append(text.DrawText(0.95, 0.35, "Bx / |B| = %6.3f +- %5.3f" % (h_BxB.GetMean(), h_BxB.GetRMS())))
+                keep.append(text.DrawText(0.95, 0.25, "By / |B| = %6.3f +- %5.3f" % (h_ByB.GetMean(), h_ByB.GetRMS())))
+                keep.append(text.DrawText(0.95, 0.15, "Bz / |B| = %6.3f +- %5.3f" % (h_BzB.GetMean(), h_BzB.GetRMS())))
+            else:
+                # h = [g_B, h_B, h_phi, h_BxB, h_ByB, h_BzB][i]
+                h = [None, h_B, None, h_phi, h_BzB, None][i]
+                if h is None:
+                    continue
+                h.Draw()
+                h.GetXaxis().SetTitleSize(1.3 * h.GetXaxis().GetTitleSize())
+                h.GetYaxis().SetTitleSize(1.3 * h.GetYaxis().GetTitleSize())
+                r.gPad.Update()  # force stats box to be drawn
+                st = h.FindObject("stats")
+                st.SetX1NDC(0.65)
+                st.SetX2NDC(1.00)
 
-        elif h.ClassName().startswith("TH1"):
-            h.Draw()
-            r.gPad.Update()  # force stats box to be drawn
-            st = h.FindObject("stats")
-            st.SetX1NDC(0.65)
-            st.SetX2NDC(1.00)
-        elif h.ClassName().startswith("TGraph") and (i + 1) < len(lst):
-            h.SetMarkerStyle(20)
-            h.Draw("ap")
-            h.GetXaxis().SetTitle("sequential sample number (\Deltat = 2 seconds)")
-            h.GetYaxis().SetTitle(lst[i + 1].GetXaxis().GetTitle())
-            h.GetYaxis().SetTitleOffset(-15.0)
-            h.SetTitle(lst[i + 1].GetTitle())
-
-
-        if (i % period) == (period - 1):
-            can.cd(0)
-            can.Print(pdf)
+        can.cd(0)
+        can.Print(pdf)
 
     can.Print(pdf + "]")
 
