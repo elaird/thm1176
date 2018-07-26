@@ -13,7 +13,7 @@ def pruned_sorted(directory, files):
         skip = True
         f = open(fullname)
 
-        for iLine, line in enumerate(f):
+        for line in f:
             if options.match in line:
                 skip = False
 
@@ -31,7 +31,7 @@ def pruned_sorted(directory, files):
                 continue
 
             date, time = fields[:2]
-            dct[(date, time)] = fullname
+            dct[(date, time)] = filename
             break
 
         f.close()
@@ -42,7 +42,7 @@ def histos(directory, files):
     out = []
 
     for _, filename in pruned_sorted(directory, files):
-        title = filename.replace(".dat", "").replace("%s/" % directory, "")
+        title = filename.replace(".dat", "")
         h_B = r.TH1D(filename, "%s;measured magnitude of B (Tesla);entries / bin" % title, 400, 0.0, 0.4)
         h_BxB = r.TH1D(filename + "BxB", "%s; B_{x} / |B|;entries / bin" % title, 200, -1.0, 1.0)
         h_ByB = r.TH1D(filename + "ByB", "%s; B_{y} / |B|;entries / bin" % title, 200, -1.0, 1.0)
@@ -55,8 +55,8 @@ def histos(directory, files):
         t0 = ""
         tn = ""
 
-        f = open(filename)
-        for iLine, line in enumerate(f):
+        f = open("%s/%s" % (directory, filename))
+        for line in f:
             fields = line.split()
 
             if len(fields) < 2:
@@ -67,12 +67,6 @@ def histos(directory, files):
 
             if fields[-1] != "T":
                 print "ERROR!", fields
-                continue
-
-            # filter measurements during which probe was in motion
-            if filename.endswith("near-x4p-meas2.dat") and 20 <= iLine:
-                continue
-            if filename.endswith("near-x4p-meas5.dat") and 15 <= iLine:
                 continue
 
             date, time, b_x, t_x, b_y, t_y, b_z, t_z, b_mag, t_mag  = fields
