@@ -1,35 +1,48 @@
 #!/usr/bin/env python2
 
+import optparse, os, sys
 import ROOT as r
+r.PyConfig.IgnoreCommandLineOptions = True
 
-def histos(directory="2018-07-18"):
+
+def pruned_sorted(directory, files):
+    dct = {}
+    for iFilename, filename in enumerate(files):
+        fullname = "%s/%s" % (directory, filename)
+
+        skip = True
+        f = open(fullname)
+
+        for iLine, line in enumerate(f):
+            if options.match in line:
+                skip = False
+
+            if skip:
+                continue
+
+            fields = line.split()
+            if len(fields) < 2:
+                continue
+
+            if fields[-1] != "T":
+                continue
+
+            if not fields[0].strip().startswith(options.cenMatch):
+                continue
+
+            date, time = fields[:2]
+            dct[(date, time)] = fullname
+            break
+
+        f.close()
+    return sorted(dct.items())
+
+
+def histos(directory, files):
     out = []
-    for iFilename, filename in enumerate(["surface2.dat",
-                                          "near-x4p-meas1.dat",
-                                          "near-x4p-meas2.dat",
-                                          "near-x4p-meas3.dat",
-                                          "near-x4p-meas4.dat",
-                                          "near-x4p-meas5.dat",
-                                          "near-x4m-meas1.dat",
-                                          "near-x4m-meas2.dat",
-                                          "near-x4m-meas3.dat",
-                                          "near-x4m-meas4.dat",
-                                          "near-x4m-meas5.dat",
-                                          "far-x4m-meas1.dat",
-                                          "far-x4m-meas2.dat",
-                                          "far-x4m-meas3.dat",
-                                          "far-x4m-meas4.dat",
-                                          "far-x4m-meas5.dat",
-                                          "far-x4p-meas1.dat",
-                                          "far-x4p-meas2.dat",
-                                          "far-x4p-meas3.dat",
-                                          "far-x4p-meas4.dat",
-                                          "far-x4p-meas5.dat",
-                                          "surface3.dat"]):
 
-        title = filename.replace(".dat", "").replace("2018-07-18/", "")
-        title = title.replace("surface2", "zero field chamber on surface")
-        title = title.replace("surface3", "zero field chamber on surface")
+    for _, filename in pruned_sorted(directory, files):
+        title = filename.replace(".dat", "").replace("%s/" % directory, "")
         h_B = r.TH1D(filename, "%s;measured magnitude of B (Tesla);entries / bin" % title, 400, 0.0, 0.4)
         h_BxB = r.TH1D(filename + "BxB", "%s; B_{x} / |B|;entries / bin" % title, 200, -1.0, 1.0)
         h_ByB = r.TH1D(filename + "ByB", "%s; B_{y} / |B|;entries / bin" % title, 200, -1.0, 1.0)
@@ -42,13 +55,14 @@ def histos(directory="2018-07-18"):
         t0 = ""
         tn = ""
 
-        f = open("%s/%s" % (directory, filename))
+        f = open(filename)
         for iLine, line in enumerate(f):
-            if "2018" not in line:
+            fields = line.split()
+
+            if len(fields) < 2:
                 continue
 
-            fields = line.split()
-            if len(fields) < 2:
+            if not fields[0].strip().startswith(options.cenMatch):
                 continue
 
             if fields[-1] != "T":
@@ -137,8 +151,11 @@ def write(lst, pdf, period=6):
                 keep.append(text.DrawText(0.95, 0.25, "By / |B| = %6.3f +- %5.3f" % (h_ByB.GetMean(), h_ByB.GetRMS())))
                 keep.append(text.DrawText(0.95, 0.15, "Bz / |B| = %6.3f +- %5.3f" % (h_BzB.GetMean(), h_BzB.GetRMS())))
             else:
-                # h = [g_B, h_B, h_phi, h_BxB, h_ByB, h_BzB][i]
-                h = [None, h_B, None, h_phi, h_BzB, None][i]
+                if options.phi:
+                    h = [None, h_B, None, h_phi, h_BzB, None][i]
+                else:
+                    h = [g_B, h_B, h_phi, h_BxB, h_ByB, h_BzB][i]
+
                 if h is None:
                     continue
                 h.Draw()
@@ -155,9 +172,42 @@ def write(lst, pdf, period=6):
     can.Print(pdf + "]")
 
 
+def opts():
+    parser = optparse.OptionParser(usage="usage: %prog <directory_containing_data>")
+    parser.add_option("--phi",
+                      dest="phi",
+                      default=False,
+                      action="store_true",
+                      help="Histogram phi rather than Bx/|B| and By/|B|")
+    parser.add_option("--century",
+                      dest="century",
+                      default=21,
+                      metavar="21",
+                      type="int",
+                      help="century to assume when matching dates")
+    parser.add_option("--match",
+                      dest="match",
+                      default="Metrolab Technology SA,THM1176",
+                      metavar="'Metrolab Technology SA,THM1176'",
+                      help="string used to identify data files")
+    options, args = parser.parse_args()
+    options.cenMatch = str(options.century - 1)
+
+    if len(args) != 1:
+        sys.exit("\n".join(["", "Pass a directory containing the data as an argument, e.g.", "./plot.py .", "or", "./plot.py 2018-07-18"]))
+    return options, args
+
+
+def main(directory):
+    for root, dirs, files in os.walk(directory):
+        pdf = "%s/mag.pdf" % root
+        write(histos(root, files), pdf)
+        print "Wrote %s" % pdf
+
+
 if __name__ == "__main__":
     r.gROOT.SetBatch(True)
     r.gStyle.SetOptStat("mer")
     r.gErrorIgnoreLevel = r.kWarning
-
-    write(histos(), "mag.pdf")
+    options, args = opts()
+    main(args[0])
