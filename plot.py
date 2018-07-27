@@ -43,17 +43,19 @@ def histos(directory, files):
 
     for _, filename in pruned_sorted(directory, files):
         title = filename.replace(".dat", "")
-        h_B = r.TH1D(filename, "%s;measured magnitude of B (Tesla);entries / bin" % title, 400, 0.0, 0.4)
+        h_B = r.TH1D(filename, "%s;measured magnitude of B (Tesla);entries / bin" % title, 400, 0.0, options.bmax)
         h_BxB = r.TH1D(filename + "BxB", "%s; B_{x} / |B|;entries / bin" % title, 200, -1.0, 1.0)
         h_ByB = r.TH1D(filename + "ByB", "%s; B_{y} / |B|;entries / bin" % title, 200, -1.0, 1.0)
         h_BzB = r.TH1D(filename + "BzB", "%s; B_{z} / |B|;entries / bin" % title, 200, -1.0, 1.0)
         h_phi = r.TH1D(filename + "phi", "%s; atan2(B_{y} , B_{x});entries / bin" % title, 200, -r.TMath.Pi(), r.TMath.Pi())
+        h_dt = r.TH1D(filename + "dt", "%s; #Deltat between samples (seconds);entries / bin" % title, 100, 0.0, options.deltatmax)
 
         g_B = r.TGraph()
         iPoint = 0
 
         t0 = ""
         tn = ""
+        tPrev = None
 
         f = open("%s/%s" % (directory, filename))
         for line in f:
@@ -80,6 +82,20 @@ def histos(directory, files):
             b_z = float(b_z)
             b_mag = float(b_mag)
 
+            hh, mm, sec = time.split(":")
+            hh = float(hh)
+            mm = float(mm)
+            sec = float(sec)
+            t = hh * 3600. + mm * 60. + sec
+
+            if tPrev is not None:
+                deltaT = (t - tPrev)
+                if hhPrev is not None and hh < hhPrev:  # assume midnight
+                    deltaT += 24. * 3600.
+                h_dt.Fill(deltaT)
+            tPrev = t
+            hhPrev = hh
+
             h_B.Fill(b_mag)
             h_BxB.Fill(b_x / b_mag)
             h_ByB.Fill(b_y / b_mag)
@@ -94,7 +110,7 @@ def histos(directory, files):
         f.close()
 
         g_B.SetName("_".join([t0, tn]))
-        out.append((g_B, h_B, h_phi, h_BxB, h_ByB, h_BzB))
+        out.append((g_B, h_dt, h_B, h_phi, h_BxB, h_ByB, h_BzB))
 
     return out
 
@@ -105,35 +121,42 @@ def truncated_date(lst):
     return out
 
 
-def write(lst, pdf, period=6):
+def write(lst, pdf, period=8):
     can = r.TCanvas("canvas", "", 1600, 900)
 
     keep = []
     can.Print(pdf + "[")
-    for g_B, h_B, h_phi, h_BxB, h_ByB, h_BzB in lst:
+    for g_B, h_dt, h_B, h_phi, h_BxB, h_ByB, h_BzB in lst:
         can.cd(0)
         can.Clear()
-        can.Divide(3, 2)
+        can.Divide(4, 2)
+
+        text = r.TLatex()
+        text.SetTextAlign(22)
+        text.SetTextFont(102)
+        # text.SetTextSize(1.1 * text.GetTextSize())
+        text.SetNDC()
+        keep.append(text.DrawText(0.5, 0.985, h_B.GetTitle()))
 
         for i in range(period):
             can.cd(1 + i)
             r.gPad.SetTickx()
             r.gPad.SetTicky()
 
-            if i == 0:
+            if i == 1:
                 g_B.SetMarkerStyle(20)
                 g_B.Draw("ap")
-                g_B.GetXaxis().SetTitle("sequential sample number (\Deltat = 2 seconds)")
+                g_B.GetXaxis().SetTitle("sequential sample number")
                 g_B.GetYaxis().SetTitle(h_B.GetXaxis().GetTitle())
                 g_B.GetXaxis().SetTitleSize(1.3 * g_B.GetXaxis().GetTitleSize())
                 g_B.GetYaxis().SetTitleSize(1.3 * g_B.GetYaxis().GetTitleSize())
                 g_B.GetYaxis().SetTitleOffset(-11.65)
-                g_B.SetTitle(h_B.GetTitle())
-            elif i == 2:
+                # g_B.SetTitle(h_B.GetTitle())
+            elif i == 3:
                 text = r.TLatex()
                 text.SetTextAlign(32)
                 text.SetTextFont(102)
-                text.SetTextSize(1.4 * text.GetTextSize())
+                text.SetTextSize(1.3 * text.GetTextSize())
                 text.SetNDC()
 
                 times = g_B.GetName().split("_")
@@ -144,15 +167,11 @@ def write(lst, pdf, period=6):
                 keep.append(text.DrawText(0.95, 0.35, "Bx / |B| = %6.3f +- %5.3f" % (h_BxB.GetMean(), h_BxB.GetRMS())))
                 keep.append(text.DrawText(0.95, 0.25, "By / |B| = %6.3f +- %5.3f" % (h_ByB.GetMean(), h_ByB.GetRMS())))
                 keep.append(text.DrawText(0.95, 0.15, "Bz / |B| = %6.3f +- %5.3f" % (h_BzB.GetMean(), h_BzB.GetRMS())))
+                # keep.append(text.DrawText(0.95, 0.05, "atan(By/Bx) = %6.3f +- %5.3f" % (h_phi.GetMean(), h_phi.GetRMS())))
             else:
-                if options.phi:
-                    h = [None, h_B, None, h_phi, h_BzB, None][i]
-                else:
-                    h = [g_B, h_B, h_phi, h_BxB, h_ByB, h_BzB][i]
-
-                if h is None:
-                    continue
+                h = [h_dt, g_B, h_B, None, h_BxB, h_ByB, h_BzB, h_phi][i]
                 h.Draw()
+                h.SetTitle("")
                 h.GetXaxis().SetTitleSize(1.3 * h.GetXaxis().GetTitleSize())
                 h.GetYaxis().SetTitleSize(1.3 * h.GetYaxis().GetTitleSize())
                 r.gPad.Update()  # force stats box to be drawn
@@ -168,11 +187,18 @@ def write(lst, pdf, period=6):
 
 def opts():
     parser = optparse.OptionParser(usage="usage: %prog <directory_containing_data>")
-    parser.add_option("--phi",
-                      dest="phi",
-                      default=False,
-                      action="store_true",
-                      help="Histogram phi rather than Bx/|B| and By/|B|")
+    parser.add_option("--bmax",
+                      dest="bmax",
+                      default=4.0,
+                      metavar="B",
+                      type="float",
+                      help="upper end of histogram of |B|")
+    parser.add_option("--deltatmax",
+                      dest="deltatmax",
+                      default=10.0,
+                      metavar="T",
+                      type="float",
+                      help="upper end of histogram of delta t")
     parser.add_option("--century",
                       dest="century",
                       default=21,
@@ -201,7 +227,7 @@ def main(directory):
 
 if __name__ == "__main__":
     r.gROOT.SetBatch(True)
-    r.gStyle.SetOptStat("mer")
+    r.gStyle.SetOptStat("ourme")
     r.gErrorIgnoreLevel = r.kWarning
     options, args = opts()
     main(args[0])
