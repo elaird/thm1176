@@ -6,10 +6,12 @@
 ```bash
 pip2 install pyusb --user
 pip2 install python-usbtmc --user
+git clone https://github.com/elaird/thm1176
 ```
 
 ### acquire from probe
 ```bash
+cd thm1176
 ./mag_usbtmc.py
 ```
 
