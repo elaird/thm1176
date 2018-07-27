@@ -71,7 +71,12 @@ def histos(directory, files):
                 print "ERROR!", fields
                 continue
 
-            date, time, b_x, t_x, b_y, t_y, b_z, t_z, b_mag, t_mag  = fields
+            try:
+                date, time, b_x, t_x, b_y, t_y, b_z, t_z, b_mag, t_mag  = fields
+            except ValueError:
+                print "ERROR: ", filename, fields
+                continue
+
             if len(set([t_x, t_y, t_z, t_mag])) != 1:
                 print "ERROR!", fields
             if not b_mag:
@@ -122,9 +127,10 @@ def truncated_date(lst):
 
 
 def write(lst, pdf, period=8):
-    can = r.TCanvas("canvas", "", 1600, 900)
+    can = r.TCanvas("canvas_%s" % pdf, "", 1600, 900)
 
     keep = []
+
     can.Print(pdf + "[")
     for g_B, h_dt, h_B, h_phi, h_BxB, h_ByB, h_BzB in lst:
         can.cd(0)
@@ -221,8 +227,10 @@ def opts():
 def main(directory):
     for root, dirs, files in os.walk(directory):
         pdf = "%s/mag.pdf" % root
-        write(histos(root, files), pdf)
-        print "Wrote %s" % pdf
+        lst = histos(root, files)
+        if lst:
+            write(lst, pdf)
+            print "Wrote %s" % pdf
 
 
 if __name__ == "__main__":
