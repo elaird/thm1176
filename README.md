@@ -12,7 +12,8 @@ git clone https://github.com/elaird/thm1176
 ### acquire from probe
 ```bash
 cd thm1176
-./mag_usbtmc.py
+./mag_usbtmc.py --logfile=measurement1.dat
+# interrupt with ctrl-c
 ```
 
 ### plot results using [pyROOT](https://root.cern.ch)
