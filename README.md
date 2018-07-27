@@ -18,5 +18,5 @@ cd thm1176
 
 ### plot results using [pyROOT](https://root.cern.ch)
 ```bash
-./plot.py 2018-07-18 --bmax=0.4
+./plot.py 2018-07-18-uxc --bmax=0.4
 ```
