@@ -220,7 +220,7 @@ def opts():
     options.cenMatch = str(options.century - 1)
 
     if len(args) != 1:
-        sys.exit("\n".join(["", "Pass a directory containing the data as an argument, e.g.", "./plot.py .", "or", "./plot.py 2018-07-18"]))
+        sys.exit("\n".join(["", "Pass a directory containing the data as an argument, e.g.", "./plot.py ."]))
     return options, args
 
 
