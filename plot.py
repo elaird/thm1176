@@ -48,7 +48,7 @@ def histos(directory, files):
         h_ByB = r.TH1D(filename + "ByB", "%s; B_{y} / |B|;entries / bin" % title, 200, -1.0, 1.0)
         h_BzB = r.TH1D(filename + "BzB", "%s; B_{z} / |B|;entries / bin" % title, 200, -1.0, 1.0)
         h_phi = r.TH1D(filename + "phi", "%s; atan2(B_{y} , B_{x});entries / bin" % title, 200, -r.TMath.Pi(), r.TMath.Pi())
-        h_dt = r.TH1D(filename + "dt", "%s; #Deltat between samples (seconds);entries / bin" % title, 100, 0.0, options.deltatmax)
+        h_dt = r.TH1D(filename + "dt", "%s; #Deltat between measurements (seconds);entries / bin" % title, 100, 0.0, options.deltatmax)
 
         g_B = r.TGraph()
         iPoint = 0
@@ -152,7 +152,7 @@ def write(lst, pdf, period=8):
             if i == 1:
                 g_B.SetMarkerStyle(20)
                 g_B.Draw("ap")
-                g_B.GetXaxis().SetTitle("sequential sample number")
+                g_B.GetXaxis().SetTitle("sequential measurement number")
                 g_B.GetYaxis().SetTitle(h_B.GetXaxis().GetTitle())
                 g_B.GetXaxis().SetTitleSize(1.3 * g_B.GetXaxis().GetTitleSize())
                 g_B.GetYaxis().SetTitleSize(1.3 * g_B.GetYaxis().GetTitleSize())
