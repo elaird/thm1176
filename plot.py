@@ -1,8 +1,30 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 import optparse, os, sys
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
+
+
+def find_date_time(f, options, skip):
+    for line in f:
+        if options.match in line:
+            skip = False
+
+        if skip:
+            continue
+
+        fields = line.split()
+        if len(fields) < 2:
+            continue
+
+        if fields[-1] != "T":
+            continue
+
+        if not fields[0].strip().startswith(options.cenMatch):
+            continue
+
+        return fields[:2]
+    return None, None
 
 
 def pruned_sorted(directory, files):
@@ -13,26 +35,12 @@ def pruned_sorted(directory, files):
         skip = True
         f = open(fullname)
 
-        for line in f:
-            if options.match in line:
-                skip = False
-
-            if skip:
-                continue
-
-            fields = line.split()
-            if len(fields) < 2:
-                continue
-
-            if fields[-1] != "T":
-                continue
-
-            if not fields[0].strip().startswith(options.cenMatch):
-                continue
-
-            date, time = fields[:2]
-            dct[(date, time)] = filename
-            break
+        try:
+            date, time = find_date_time(f, options, skip)
+            if date is not None:
+                dct[(date, time)] = filename
+        except UnicodeDecodeError:
+            continue
 
         f.close()
     return sorted(dct.items())
@@ -68,19 +76,19 @@ def histos(directory, files):
                 continue
 
             if fields[-1] != "T":
-                print "ERROR!", fields
+                print("ERROR!", fields)
                 continue
 
             try:
                 date, time, b_x, t_x, b_y, t_y, b_z, t_z, b_mag, t_mag  = fields
             except ValueError:
-                print "ERROR: ", filename, fields
+                print("ERROR: ", filename, fields)
                 continue
 
             if len(set([t_x, t_y, t_z, t_mag])) != 1:
-                print "ERROR!", fields
+                print("ERROR!", fields)
             if not b_mag:
-                print "ERROR!", fields
+                print("ERROR!", fields)
 
             b_x = float(b_x)
             b_y = float(b_y)
@@ -230,7 +238,7 @@ def main(directory):
         lst = histos(root, files)
         if lst:
             write(lst, pdf)
-            print "Wrote %s" % pdf
+            print("Wrote %s" % pdf)
 
 
 if __name__ == "__main__":
