@@ -4,8 +4,8 @@
 
 ### install dependencies
 ```bash
-pip2 install pyusb --user
-pip2 install python-usbtmc --user
+pip install pyusb --user
+pip install python-usbtmc --user
 git clone https://github.com/elaird/thm1176
 ```
 

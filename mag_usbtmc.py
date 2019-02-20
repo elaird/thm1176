@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 import datetime, optparse, subprocess, sys, time
 import usbtmc
@@ -17,7 +17,7 @@ def probe(idVendor=0x1bfa, idProduct=0x0498):
     """ see https://www.metrolab.com/products/thm1176/ """
 
     log("USBTMC   devices: " + str(usbtmc.list_devices()))
-    log("USBTMC resources: " + str(usbtmc.list_resources()))
+    # log("USBTMC resources: " + str(usbtmc.list_resources()))
 
     try:
         instr = usbtmc.Instrument(idVendor, idProduct)
@@ -113,7 +113,7 @@ def measure_one(instr):
 
 
 def log(s=""):
-    print s
+    print(s)
     logfile.write("\n" + s)
 
 
@@ -165,6 +165,6 @@ def opts():
 
 if __name__ == "__main__":
     options = opts()
-    logfile = open(options.logfile, "append")
+    logfile = open(options.logfile, "a")
     loop(probe(), nSecSleep=options.nSecondsSleep, nMax=options.nMeasurements)
     logfile.close()
